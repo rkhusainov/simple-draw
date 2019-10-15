@@ -124,72 +124,81 @@ public class DrawView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        int action = event.getAction();
-        PointF currentPoint = new PointF(event.getX(), event.getY());
 
         switch (mDrawType) {
             case CURVE:
-                switch (action) {
-                    case MotionEvent.ACTION_DOWN:
-                        mDrawPath = new Path();
-                        mDrawPath.moveTo(currentPoint.x, currentPoint.y);
-                        break;
-                    case MotionEvent.ACTION_MOVE:
-                        mDrawPath.lineTo(currentPoint.x, currentPoint.y);
-                        mCurve = new Curve(mDrawPath, mCurrentColor);
-                        mCurves.add(mCurve);
-                    case MotionEvent.ACTION_CANCEL:
-                        break;
-                    default:
-                        return super.onTouchEvent(event);
-                }
+                curveEvent(event);
                 break;
-
             case LINE:
-                switch (action) {
-                    case MotionEvent.ACTION_DOWN:
-                        mLine = new Line(currentPoint, currentPoint, mCurrentColor);
-                        mLines.add(mLine);
-                        break;
-                    case MotionEvent.ACTION_MOVE:
-                        if (mLine != null) {
-                            mLine.setEnd(currentPoint);
-                        }
-                        break;
-                    case MotionEvent.ACTION_UP:
-                    case MotionEvent.ACTION_CANCEL:
-                        mLine = null;
-                        break;
-                    default:
-                        return super.onTouchEvent(event);
-                }
+                lineEvent(event);
                 break;
-
             case BOX:
-                switch (action) {
-                    case MotionEvent.ACTION_DOWN:
-                        mCurrentBox = new Box(currentPoint, mCurrentColor);
-                        mBoxes.add(mCurrentBox);
-                        break;
-                    case MotionEvent.ACTION_MOVE:
-                        if (mCurrentBox != null) {
-                            mCurrentBox.setCurrent(currentPoint);
-                        }
-                        break;
-                    case MotionEvent.ACTION_UP:
-                    case MotionEvent.ACTION_CANCEL:
-                        mCurrentBox = null;
-                        break;
-                    default:
-                        return super.onTouchEvent(event);
-                }
+                boxEvent(event);
                 break;
             default:
                 return super.onTouchEvent(event);
-
         }
-
         invalidate();
         return true;
+    }
+
+    private void curveEvent(MotionEvent event) {
+        int action = event.getAction();
+        PointF currentPoint = new PointF(event.getX(), event.getY());
+
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+                mDrawPath = new Path();
+                mDrawPath.moveTo(currentPoint.x, currentPoint.y);
+                break;
+            case MotionEvent.ACTION_MOVE:
+                mDrawPath.lineTo(currentPoint.x, currentPoint.y);
+                mCurve = new Curve(mDrawPath, mCurrentColor);
+                mCurves.add(mCurve);
+            case MotionEvent.ACTION_CANCEL:
+                break;
+        }
+    }
+
+    private void lineEvent(MotionEvent event) {
+        int action = event.getAction();
+        PointF currentPoint = new PointF(event.getX(), event.getY());
+
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+                mLine = new Line(currentPoint, currentPoint, mCurrentColor);
+                mLines.add(mLine);
+                break;
+            case MotionEvent.ACTION_MOVE:
+                if (mLine != null) {
+                    mLine.setEnd(currentPoint);
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                mLine = null;
+                break;
+        }
+    }
+
+    private void boxEvent(MotionEvent event) {
+        int action = event.getAction();
+        PointF currentPoint = new PointF(event.getX(), event.getY());
+
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+                mCurrentBox = new Box(currentPoint, mCurrentColor);
+                mBoxes.add(mCurrentBox);
+                break;
+            case MotionEvent.ACTION_MOVE:
+                if (mCurrentBox != null) {
+                    mCurrentBox.setCurrent(currentPoint);
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                mCurrentBox = null;
+                break;
+        }
     }
 }
