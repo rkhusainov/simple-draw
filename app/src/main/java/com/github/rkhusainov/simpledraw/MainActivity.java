@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageButton;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -19,7 +20,7 @@ public class MainActivity extends AppCompatActivity {
     private Button mOrangeColorButton;
     private Button mMagentaColorButton;
     private Button mPinkColorButton;
-    private Button mClearButton;
+    private ImageButton mClearImageButton;
     private DrawView mDrawView;
 
     @Override
@@ -46,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
         mMagentaColorButton = findViewById(R.id.btn_color_magenta);
         mPinkColorButton = findViewById(R.id.btn_color_pink);
 
-        mClearButton = findViewById(R.id.btn_clear);
+        mClearImageButton = findViewById(R.id.btn_clear);
 
         mCurveButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -91,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        mClearButton.setOnClickListener(new View.OnClickListener() {
+        mClearImageButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 mDrawView.clear();

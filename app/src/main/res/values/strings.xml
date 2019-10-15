@@ -3,4 +3,5 @@
     <string name="curve">curve</string>
     <string name="line">line</string>
     <string name="box">box</string>
+    <string name="clear">clear</string>
 </resources>
