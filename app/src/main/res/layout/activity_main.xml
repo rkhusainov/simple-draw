@@ -100,6 +100,13 @@
             android:text="@string/box"
             style="@style/Widget.AppCompat.Button.Borderless.Colored"/>
 
+        <Button
+            android:id="@+id/btn_poly"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/poly"
+            style="@style/Widget.AppCompat.Button.Borderless.Colored"/>
+
         <ImageButton
             android:id="@+id/btn_clear"
             android:layout_width="wrap_content"
