@@ -12,6 +12,7 @@ public class MainActivity extends AppCompatActivity {
     private Button mCurveButton;
     private Button mLineButton;
     private Button mBoxButton;
+    private Button mPolyButton;
     private Button mRedColorButton;
     private Button mBlackColorButton;
     private Button mGreenColorButton;
@@ -37,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
         mCurveButton = findViewById(R.id.btn_curve);
         mLineButton = findViewById(R.id.btn_line);
         mBoxButton = findViewById(R.id.btn_box);
+        mPolyButton = findViewById(R.id.btn_poly);
 
         mRedColorButton = findViewById(R.id.btn_color_red);
         mBlackColorButton = findViewById(R.id.btn_color_black);
@@ -70,13 +72,19 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        mPolyButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mDrawView.setDrawType(DrawType.POLY);
+            }
+        });
+
         mBlackColorButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 mDrawView.setPaintColor(getResources().getColor(R.color.colorBlack));
             }
         });
-
 
         mRedColorButton.setOnClickListener(new View.OnClickListener() {
             @Override
