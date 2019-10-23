@@ -5,4 +5,5 @@
     <string name="box">box</string>
     <string name="clear">clear</string>
     <string name="poly">poly</string>
+    <string name="scroll">scroll</string>
 </resources>

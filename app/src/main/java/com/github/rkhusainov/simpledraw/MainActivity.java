@@ -40,6 +40,13 @@ public class MainActivity extends AppCompatActivity {
         mBoxButton = findViewById(R.id.btn_box);
         mPolyButton = findViewById(R.id.btn_poly);
 
+        findViewById(R.id.scroll_button).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mDrawView.setScrolls(true);
+            }
+        });
+
         mRedColorButton = findViewById(R.id.btn_color_red);
         mBlackColorButton = findViewById(R.id.btn_color_black);
         mGreenColorButton = findViewById(R.id.btn_color_green);

@@ -7,6 +7,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -35,12 +36,16 @@ public class DrawView extends View {
     private List<Box> mBoxes = new ArrayList<>();
     private Box mCurrentBox;
 
+    private Path mPolyPath = new Path();
     private Paint mPolyPaint = new Paint();
     private List<PointF> mPoints = new ArrayList<>();
 
     private int mCurrentColor = getContext().getResources().getColor(R.color.colorBlack);
 
     private DrawType mDrawType = DrawType.CURVE;
+
+    private GestureDetector mGestureDetector;
+    private boolean mScrolls;
 
     public DrawView(Context context) {
         this(context, null);
@@ -72,6 +77,8 @@ public class DrawView extends View {
         mPolyPaint.setAntiAlias(true);
         mPolyPaint.setStyle(Paint.Style.STROKE);
         mPolyPaint.setStrokeWidth(10f);
+
+        initGestureDetector();
     }
 
     @Override
@@ -152,6 +159,10 @@ public class DrawView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        if(mScrolls) {
+            mGestureDetector.onTouchEvent(event);
+        }
+
         int action = event.getActionMasked();
         PointF currentPoint = new PointF(event.getX(), event.getY());
 
@@ -241,7 +252,6 @@ public class DrawView extends View {
                         }
                         break;
                     case MotionEvent.ACTION_POINTER_UP:
-                        break;
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
                         break;
@@ -252,5 +262,48 @@ public class DrawView extends View {
 
         invalidate();
         return true;
+    }
+
+    private void initGestureDetector() {
+        mGestureDetector = new GestureDetector(getContext(), new GestureDetector.OnGestureListener() {
+            @Override
+            public boolean onDown(MotionEvent e) {
+                return false;
+            }
+
+            @Override
+            public void onShowPress(MotionEvent e) {
+
+            }
+
+            @Override
+            public boolean onSingleTapUp(MotionEvent e) {
+                return false;
+            }
+
+            @Override
+            public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+                for (PointF point : mPoints) {
+                    point.x += distanceX;
+                    point.y  += distanceY;
+                }
+                invalidate();
+                return true;
+            }
+
+            @Override
+            public void onLongPress(MotionEvent e) {
+
+            }
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                return false;
+            }
+        });
+    }
+
+    public void setScrolls(boolean scrolls) {
+        mScrolls = scrolls;
     }
 }
