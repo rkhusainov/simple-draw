@@ -7,6 +7,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
 import android.util.AttributeSet;
+import android.util.Pair;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -16,6 +17,7 @@ import androidx.annotation.Nullable;
 import com.github.rkhusainov.simpledraw.model.Box;
 import com.github.rkhusainov.simpledraw.model.Curve;
 import com.github.rkhusainov.simpledraw.model.Line;
+import com.github.rkhusainov.simpledraw.model.Point;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,9 +38,9 @@ public class DrawView extends View {
     private List<Box> mBoxes = new ArrayList<>();
     private Box mCurrentBox;
 
-    private Path mPolyPath = new Path();
     private Paint mPolyPaint = new Paint();
-    private List<PointF> mPoints = new ArrayList<>();
+    private List<Point> mPoints = new ArrayList<>();
+    private Point mPoint;
 
     private int mCurrentColor = getContext().getResources().getColor(R.color.colorBlack);
 
@@ -94,24 +96,6 @@ public class DrawView extends View {
         polyDraw(canvas);
     }
 
-    private void polyDraw(Canvas canvas) {
-
-        if (mPoints.isEmpty()) {
-            return;
-        }
-
-        if (mPoints.size() == 1) {
-            canvas.drawPoint(mPoints.get(0).x, mPoints.get(0).y, mPolyPaint);
-        } else {
-            for (int i = 1; i < mPoints.size(); i++) {
-                PointF one = mPoints.get(i - 1);
-                PointF two = mPoints.get(i);
-
-                canvas.drawLine(one.x, one.y, two.x, two.y, mPolyPaint);
-            }
-        }
-    }
-
     private void curveDraw(Canvas canvas) {
         for (Curve curve : mCurves) {
             mCurvePaint.setColor(curve.getColor());
@@ -141,6 +125,24 @@ public class DrawView extends View {
         }
     }
 
+    private void polyDraw(Canvas canvas) {
+
+        if (mPoints.isEmpty()) {
+            return;
+        }
+
+        if (mPoints.size() == 1) {
+            canvas.drawPoint(mPoints.get(0).getCurrent().x, mPoints.get(0).getCurrent().y, mPolyPaint);
+        } else {
+            for (int i = 1; i < mPoints.size(); i++) {
+                PointF one = mPoints.get(i - 1).getCurrent();
+                PointF two = mPoints.get(i).getCurrent();
+
+                canvas.drawLine(one.x, one.y, two.x, two.y, mPolyPaint);
+            }
+        }
+    }
+
     public void setDrawType(DrawType drawType) {
         mDrawType = drawType;
     }
@@ -154,12 +156,17 @@ public class DrawView extends View {
         mCurves.clear();
         mBoxes.clear();
         mPoints.clear();
+        mScrolls = false;
         invalidate();
+    }
+
+    public void setScrolls(boolean scrolls) {
+        mScrolls = scrolls;
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if(mScrolls) {
+        if (mScrolls) {
             mGestureDetector.onTouchEvent(event);
         }
 
@@ -227,28 +234,35 @@ public class DrawView extends View {
             case POLY:
                 switch (event.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
-                        mPoints.clear();
-                        mPoints.add(new PointF(event.getX(), event.getY()));
+                        mPoint = new Point(currentPoint);
+                        mPoint.getCurrent().x = event.getX();
+                        mPoint.getCurrent().y = event.getY();
+                        mPoints.add(mPoint);
                         break;
 
                     case MotionEvent.ACTION_POINTER_DOWN:
                         int pointerId = event.getPointerId(event.getActionIndex());
+
                         if (mPoints.size() == pointerId) {
-                            mPoints.add(new PointF(
-                                    event.getX(event.getActionIndex()),
-                                    event.getY(event.getActionIndex())));
+                            mPoint = new Point(currentPoint);
+                            mPoint = new Point(currentPoint);
+                            mPoint.getCurrent().x = event.getX(event.getActionIndex());
+                            mPoint.getCurrent().y = event.getY(event.getActionIndex());
+                            mPoints.add(mPoint);
+
                         } else {
-                            PointF point = mPoints.get(pointerId);
-                            point.x = event.getX(event.getActionIndex());
-                            point.y = event.getY(event.getActionIndex());
+                            Point point = mPoints.get(pointerId);
+                            point.getCurrent().x = event.getX(event.getActionIndex());
+                            point.getCurrent().y = event.getY(event.getActionIndex());
                         }
                         break;
+
                     case MotionEvent.ACTION_MOVE:
                         for (int i = 0; i < event.getPointerCount(); i++) {
                             int id = event.getPointerId(i);
-                            PointF point = mPoints.get(id);
-                            point.x = event.getX(i);
-                            point.y = event.getY(i);
+                            mPoint = mPoints.get(id);
+                            mPoint.getCurrent().x = event.getX(i);
+                            mPoint.getCurrent().y = event.getY(i);
                         }
                         break;
                     case MotionEvent.ACTION_POINTER_UP:
@@ -283,9 +297,9 @@ public class DrawView extends View {
 
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-                for (PointF point : mPoints) {
-                    point.x += distanceX;
-                    point.y  += distanceY;
+                for (Point point : mPoints) {
+                    point.getCurrent().x += distanceX;
+                    point.getCurrent().y += distanceY;
                 }
                 invalidate();
                 return true;
@@ -301,9 +315,5 @@ public class DrawView extends View {
                 return false;
             }
         });
-    }
-
-    public void setScrolls(boolean scrolls) {
-        mScrolls = scrolls;
     }
 }
