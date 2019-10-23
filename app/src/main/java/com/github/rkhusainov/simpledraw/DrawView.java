@@ -6,18 +6,22 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
+import android.os.Build;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.AttributeSet;
-import android.util.Pair;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 import com.github.rkhusainov.simpledraw.model.Box;
 import com.github.rkhusainov.simpledraw.model.Curve;
 import com.github.rkhusainov.simpledraw.model.Line;
 import com.github.rkhusainov.simpledraw.model.Point;
+import com.github.rkhusainov.simpledraw.model.Poly;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +45,8 @@ public class DrawView extends View {
     private Paint mPolyPaint = new Paint();
     private List<Point> mPoints = new ArrayList<>();
     private Point mPoint;
+
+    private List<Poly> mPolyList = new ArrayList<>();
 
     private int mCurrentColor = getContext().getResources().getColor(R.color.colorBlack);
 
@@ -127,17 +133,17 @@ public class DrawView extends View {
 
     private void polyDraw(Canvas canvas) {
 
-        if (mPoints.isEmpty()) {
+        if (mPolyList.isEmpty()) {
             return;
         }
 
-        if (mPoints.size() == 1) {
+        if (mPolyList.size() == 1) {
             canvas.drawPoint(mPoints.get(0).getCurrent().x, mPoints.get(0).getCurrent().y, mPolyPaint);
         } else {
-            for (int i = 1; i < mPoints.size(); i++) {
-                PointF one = mPoints.get(i - 1).getCurrent();
-                PointF two = mPoints.get(i).getCurrent();
-
+            for (int i = 1; i < mPolyList.size(); i++) {
+                PointF one = mPolyList.get(i - 1).getPoint().getCurrent();
+                PointF two = mPolyList.get(i).getPoint().getCurrent();
+                mPolyPaint.setColor(mPolyList.get(i).getColor());
                 canvas.drawLine(one.x, one.y, two.x, two.y, mPolyPaint);
             }
         }
@@ -156,6 +162,7 @@ public class DrawView extends View {
         mCurves.clear();
         mBoxes.clear();
         mPoints.clear();
+        mPolyList.clear();
         mScrolls = false;
         invalidate();
     }
@@ -267,6 +274,7 @@ public class DrawView extends View {
                         break;
                     case MotionEvent.ACTION_POINTER_UP:
                     case MotionEvent.ACTION_UP:
+                        mPolyList.add(new Poly(mPoint, mCurrentColor));
                     case MotionEvent.ACTION_CANCEL:
                         break;
                     default:
@@ -315,5 +323,36 @@ public class DrawView extends View {
                 return false;
             }
         });
+    }
+
+    private static class SavedState extends BaseSavedState {
+
+        public static final Creator<SavedState> CREATOR = new Creator<SavedState>() {
+
+            @Override
+            public SavedState createFromParcel(Parcel source) {
+                return new SavedState(source);
+            }
+
+            @Override
+            public SavedState[] newArray(int size) {
+                return new SavedState[size];
+            }
+        };
+
+
+        public SavedState(Parcel source) {
+            super(source);
+        }
+
+        @RequiresApi(api = Build.VERSION_CODES.N)
+        public SavedState(Parcel source, ClassLoader loader) {
+            super(source, loader);
+
+        }
+
+        public SavedState(Parcelable superState) {
+            super(superState);
+        }
     }
 }
