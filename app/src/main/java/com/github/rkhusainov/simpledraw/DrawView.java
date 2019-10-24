@@ -3,28 +3,29 @@ package com.github.rkhusainov.simpledraw;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorFilter;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.PixelFormat;
 import android.graphics.PointF;
-import android.os.Build;
-import android.os.Parcel;
-import android.os.Parcelable;
+import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 
 import com.github.rkhusainov.simpledraw.model.Box;
 import com.github.rkhusainov.simpledraw.model.Curve;
 import com.github.rkhusainov.simpledraw.model.Line;
-import com.github.rkhusainov.simpledraw.model.Point;
-import com.github.rkhusainov.simpledraw.model.Poly;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static android.content.ContentValues.TAG;
 
 public class DrawView extends View {
     private Paint mBackgroundPaint = new Paint();
@@ -42,12 +43,6 @@ public class DrawView extends View {
     private List<Box> mBoxes = new ArrayList<>();
     private Box mCurrentBox;
 
-    private Paint mPolyPaint = new Paint();
-    private List<Point> mPoints = new ArrayList<>();
-    private Point mPoint;
-
-    private List<Poly> mPolyList = new ArrayList<>();
-
     private int mCurrentColor = getContext().getResources().getColor(R.color.colorBlack);
 
     private DrawType mDrawType = DrawType.CURVE;
@@ -55,8 +50,12 @@ public class DrawView extends View {
     private GestureDetector mGestureDetector;
     private boolean mScrolls;
 
+    private List<FigureDrawable> mFigures = new ArrayList<>();
+    private FigureDrawable mCurrentFigure;
+
     public DrawView(Context context) {
         this(context, null);
+        setupPaint();
     }
 
     public DrawView(Context context, @Nullable AttributeSet attrs) {
@@ -80,11 +79,6 @@ public class DrawView extends View {
         mBoxPaint.setColor(mCurrentColor);
         mBoxPaint.setAntiAlias(true);
         mBoxPaint.setStyle(Paint.Style.FILL);
-
-        mPolyPaint.setColor(mCurrentColor);
-        mPolyPaint.setAntiAlias(true);
-        mPolyPaint.setStyle(Paint.Style.STROKE);
-        mPolyPaint.setStrokeWidth(10f);
 
         initGestureDetector();
     }
@@ -132,20 +126,12 @@ public class DrawView extends View {
     }
 
     private void polyDraw(Canvas canvas) {
-
-        if (mPolyList.isEmpty()) {
-            return;
+        for (FigureDrawable figure : mFigures) {
+            figure.draw(canvas);
         }
-
-        if (mPolyList.size() == 1) {
-            canvas.drawPoint(mPoints.get(0).getCurrent().x, mPoints.get(0).getCurrent().y, mPolyPaint);
-        } else {
-            for (int i = 1; i < mPolyList.size(); i++) {
-                PointF one = mPolyList.get(i - 1).getPoint().getCurrent();
-                PointF two = mPolyList.get(i).getPoint().getCurrent();
-                mPolyPaint.setColor(mPolyList.get(i).getColor());
-                canvas.drawLine(one.x, one.y, two.x, two.y, mPolyPaint);
-            }
+        Log.d(TAG, "polyDraw: " + mFigures.size());
+        if (mCurrentFigure != null) {
+            mCurrentFigure.draw(canvas);
         }
     }
 
@@ -161,9 +147,8 @@ public class DrawView extends View {
         mLines.clear();
         mCurves.clear();
         mBoxes.clear();
-        mPoints.clear();
-        mPolyList.clear();
         mScrolls = false;
+        mFigures.clear();
         invalidate();
     }
 
@@ -241,44 +226,36 @@ public class DrawView extends View {
             case POLY:
                 switch (event.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
-                        mPoint = new Point(currentPoint);
-                        mPoint.getCurrent().x = event.getX();
-                        mPoint.getCurrent().y = event.getY();
-                        mPoints.add(mPoint);
+                        mCurrentFigure = new FigureDrawable(mCurrentColor);
+                        currentPoint = mCurrentFigure.getPoint(0);
                         break;
 
                     case MotionEvent.ACTION_POINTER_DOWN:
                         int pointerId = event.getPointerId(event.getActionIndex());
-
-                        if (mPoints.size() == pointerId) {
-                            mPoint = new Point(currentPoint);
-                            mPoint = new Point(currentPoint);
-                            mPoint.getCurrent().x = event.getX(event.getActionIndex());
-                            mPoint.getCurrent().y = event.getY(event.getActionIndex());
-                            mPoints.add(mPoint);
-
-                        } else {
-                            Point point = mPoints.get(pointerId);
-                            point.getCurrent().x = event.getX(event.getActionIndex());
-                            point.getCurrent().y = event.getY(event.getActionIndex());
-                        }
+                        currentPoint = mCurrentFigure.getPoint(pointerId);
                         break;
 
                     case MotionEvent.ACTION_MOVE:
                         for (int i = 0; i < event.getPointerCount(); i++) {
-                            int id = event.getPointerId(i);
-                            mPoint = mPoints.get(id);
-                            mPoint.getCurrent().x = event.getX(i);
-                            mPoint.getCurrent().y = event.getY(i);
+                            int pointId = event.getPointerId(i);
+                            mCurrentFigure.getPoint(pointId).x = event.getX();
+                            mCurrentFigure.getPoint(pointId).y = event.getY();
+
                         }
                         break;
                     case MotionEvent.ACTION_POINTER_UP:
                     case MotionEvent.ACTION_UP:
-                        mPolyList.add(new Poly(mPoint, mCurrentColor));
+                        mFigures.add(mCurrentFigure);
+                        mCurrentFigure = null;
                     case MotionEvent.ACTION_CANCEL:
                         break;
                     default:
                         return super.onTouchEvent(event);
+                }
+
+                if (currentPoint != null) {
+                    currentPoint.x = event.getX(event.getActionIndex());
+                    currentPoint.y = event.getY(event.getActionIndex());
                 }
         }
 
@@ -305,10 +282,17 @@ public class DrawView extends View {
 
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-                for (Point point : mPoints) {
-                    point.getCurrent().x += distanceX;
-                    point.getCurrent().y += distanceY;
+
+                for (FigureDrawable figure : mFigures) {
+                    for (PointF point : figure.mPoints) {
+                        float x = point.x;
+                        float y = point.y;
+
+                        point.x = x - distanceX;
+                        point.y = y - distanceY;
+                    }
                 }
+
                 invalidate();
                 return true;
             }
@@ -325,34 +309,97 @@ public class DrawView extends View {
         });
     }
 
-    private static class SavedState extends BaseSavedState {
+    public static class FigureDrawable extends Drawable {
+        private Paint mPaint;
+        private Paint mPolyPaint;
 
-        public static final Creator<SavedState> CREATOR = new Creator<SavedState>() {
+        private Path mPolyPath;
+        private int mColor;
+        private float mLineWidth = 8f;
+        private List<PointF> mPoints = new ArrayList<>();
 
-            @Override
-            public SavedState createFromParcel(Parcel source) {
-                return new SavedState(source);
-            }
-
-            @Override
-            public SavedState[] newArray(int size) {
-                return new SavedState[size];
-            }
-        };
-
-
-        public SavedState(Parcel source) {
-            super(source);
+        public FigureDrawable(int color) {
+            mColor = color;
+            initPaint();
         }
 
-        @RequiresApi(api = Build.VERSION_CODES.N)
-        public SavedState(Parcel source, ClassLoader loader) {
-            super(source, loader);
+        private void initPaint() {
+            mPaint = new Paint();
+            mPaint.setColor(mColor);
+            mPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+            mPaint.setStrokeCap(Paint.Cap.ROUND);
+            mPaint.setStrokeWidth(mLineWidth);
 
+            mPolyPaint = new Paint(mPaint);
+            mPolyPaint.setStyle(Paint.Style.FILL);
         }
 
-        public SavedState(Parcelable superState) {
-            super(superState);
+        @Override
+        public void draw(@NonNull Canvas canvas) {
+            switch (mPoints.size()) {
+                case 1:
+                    drawSinglePoint(mPoints.get(0), canvas);
+                    break;
+                case 2:
+                    Log.d(TAG, "draw: " + mPoints.size());
+                    drawLine(mPoints.get(0), mPoints.get(1), canvas);
+                    break;
+                default:
+                    drawPolyFigure(canvas);
+            }
+        }
+
+        public PointF getPoint(int index) {
+            while (index >= mPoints.size()) {
+                mPoints.add(new PointF());
+            }
+
+            return mPoints.get(index);
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            mPaint.setAlpha(alpha);
+        }
+
+        @Override
+        public void setColorFilter(@Nullable ColorFilter colorFilter) {
+            mPaint.setColorFilter(colorFilter);
+        }
+
+        @Override
+        public int getOpacity() {
+            return PixelFormat.TRANSLUCENT;
+        }
+
+        private void drawSinglePoint(PointF point, Canvas canvas) {
+            float x = point.x;
+            float y = point.y;
+
+            canvas.drawPoint(x, y, mPaint);
+        }
+
+        private void drawLine(PointF one, PointF two, Canvas canvas) {
+            canvas.drawLine(one.x, one.y, two.x, two.y, mPaint);
+        }
+
+        private void drawPolyFigure(Canvas canvas) {
+            if (mPolyPath == null) {
+                mPolyPath = new Path();
+            }
+
+            mPolyPath.reset();
+
+            for (PointF point : mPoints) {
+                if (mPolyPath.isEmpty()) {
+                    mPolyPath.moveTo(point.x, point.y);
+                } else {
+                    mPolyPath.lineTo(point.x, point.y);
+                }
+            }
+
+            mPolyPath.close();
+            canvas.drawPath(mPolyPath, mPolyPaint);
         }
     }
 }
