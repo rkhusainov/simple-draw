@@ -9,6 +9,9 @@ import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.graphics.PointF;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.GestureDetector;
@@ -17,6 +20,7 @@ import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 import com.github.rkhusainov.simpledraw.model.Box;
 import com.github.rkhusainov.simpledraw.model.Curve;
@@ -61,6 +65,23 @@ public class DrawView extends View {
     public DrawView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         setupPaint();
+    }
+
+    @Nullable
+    @Override
+    protected Parcelable onSaveInstanceState() {
+        Parcelable superState = super.onSaveInstanceState();
+        SavedState state = new SavedState(superState);
+        state.mDrawables = mFigures;
+        return state;
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Parcelable state) {
+        super.onRestoreInstanceState(state);
+        SavedState ourState = (SavedState) state;
+        mFigures = ourState.mDrawables;
+        invalidate();
     }
 
     private void setupPaint() {
@@ -162,7 +183,7 @@ public class DrawView extends View {
             mGestureDetector.onTouchEvent(event);
         }
 
-        int action = event.getActionMasked();
+        int action = event.getAction();
         PointF currentPoint = new PointF(event.getX(), event.getY());
 
         switch (mDrawType) {
@@ -238,19 +259,15 @@ public class DrawView extends View {
                     case MotionEvent.ACTION_MOVE:
                         for (int i = 0; i < event.getPointerCount(); i++) {
                             int pointId = event.getPointerId(i);
-                            mCurrentFigure.getPoint(pointId).x = event.getX();
-                            mCurrentFigure.getPoint(pointId).y = event.getY();
-
+                            mCurrentFigure.getPoint(pointId).x = event.getX(i);
+                            mCurrentFigure.getPoint(pointId).y = event.getY(i);
                         }
                         break;
-                    case MotionEvent.ACTION_POINTER_UP:
+
                     case MotionEvent.ACTION_UP:
                         mFigures.add(mCurrentFigure);
                         mCurrentFigure = null;
-                    case MotionEvent.ACTION_CANCEL:
                         break;
-                    default:
-                        return super.onTouchEvent(event);
                 }
 
                 if (currentPoint != null) {
@@ -309,7 +326,7 @@ public class DrawView extends View {
         });
     }
 
-    public static class FigureDrawable extends Drawable {
+    public static class FigureDrawable extends Drawable implements Parcelable, Cloneable{
         private Paint mPaint;
         private Paint mPolyPaint;
 
@@ -322,6 +339,50 @@ public class DrawView extends View {
             mColor = color;
             initPaint();
         }
+
+        protected FigureDrawable(Parcel in) {
+            mColor = in.readInt();
+            mLineWidth = in.readFloat();
+            mPoints = in.createTypedArrayList(PointF.CREATOR);
+        }
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            dest.writeInt(mColor);
+            dest.writeFloat(mLineWidth);
+            dest.writeTypedList(mPoints);
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        @NonNull
+        @Override
+        protected FigureDrawable clone() throws CloneNotSupportedException {
+            FigureDrawable cloned = new FigureDrawable(mColor);
+            cloned.mLineWidth = mLineWidth;
+            cloned.mPoints = new ArrayList<>(mPoints.size());
+
+            for (PointF point : mPoints) {
+                cloned.mPoints.add(new PointF(point.x, point.y));
+            }
+
+            return cloned;
+        }
+
+        public static final Creator<FigureDrawable> CREATOR = new Creator<FigureDrawable>() {
+            @Override
+            public FigureDrawable createFromParcel(Parcel in) {
+                return new FigureDrawable(in);
+            }
+
+            @Override
+            public FigureDrawable[] newArray(int size) {
+                return new FigureDrawable[size];
+            }
+        };
 
         private void initPaint() {
             mPaint = new Paint();
@@ -400,6 +461,44 @@ public class DrawView extends View {
 
             mPolyPath.close();
             canvas.drawPath(mPolyPath, mPolyPaint);
+        }
+    }
+
+    private static class SavedState extends BaseSavedState {
+
+        public static final Creator<SavedState> CREATOR = new Creator<SavedState>() {
+            @Override
+            public SavedState createFromParcel(Parcel source) {
+                return new SavedState(source);
+            }
+
+            @Override
+            public SavedState[] newArray(int size) {
+                return new SavedState[size];
+            }
+        };
+
+        private List<FigureDrawable> mDrawables;
+
+        public SavedState(Parcel source) {
+            super(source);
+            mDrawables = source.createTypedArrayList(FigureDrawable.CREATOR);
+        }
+
+        @RequiresApi(api = Build.VERSION_CODES.N)
+        public SavedState(Parcel source, ClassLoader loader) {
+            super(source, loader);
+            mDrawables = source.createTypedArrayList(FigureDrawable.CREATOR);
+        }
+
+        public SavedState(Parcelable superState) {
+            super(superState);
+        }
+
+        @Override
+        public void writeToParcel(Parcel out, int flags) {
+            super.writeToParcel(out, flags);
+            out.writeTypedList(mDrawables);
         }
     }
 }
